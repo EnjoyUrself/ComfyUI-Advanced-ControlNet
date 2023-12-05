@@ -5,7 +5,7 @@ import torch
 import comfy.utils
 import comfy.controlnet as comfy_cn
 from comfy.controlnet import ControlBase, ControlNet, ControlLora, T2IAdapter, broadcast_image_to
-
+from .logger import logger
 
 def get_properly_arranged_t2i_weights(initial_weights: list[float]):
     new_weights = []
@@ -284,14 +284,22 @@ class AdvancedControlBase:
         # get current step percent
         curr_t: float = t[0]
         prev_index = self.current_timestep_index
+        logger.info(f"len(self.timestep_keyframes): {len(self.timestep_keyframes)}")
+        logger.info(f"self.current_timestep_index: {prev_index}")
+        logger.info(f"curr_t: {curr_t}")
         # if has next index, loop through and see if need to switch
         if self.timestep_keyframes.has_index(self.current_timestep_index+1):
+            logger.info(f"next index exists: {self.current_timestep_index+1}")
             for i in range(self.current_timestep_index+1, len(self.timestep_keyframes)):
                 eval_tk = self.timestep_keyframes[i]
+                logger.info(f"eval_tk info - start_percent: {eval_tk.start_percent}, start_t: {eval_tk.start_t}, strength: {eval_tk.strength}")
                 # check if start percent is less or equal to curr_t
+                logger.info(f"comparison: eval_tk({eval_tk.start_t}) vs curr_t({curr_t})")
                 if eval_tk.start_t >= curr_t:
+                    logger.info("eval_tk.start_t is greater or equal to curr_t - saving as candidate")
                     self.current_timestep_index = i
                     self.current_timestep_keyframe = eval_tk
+                    logger.info(f"new self.current_timestep_index: {self.current_timestep_index}")
                     # keep track of control weights, latent keyframes, and masks,
                     # accounting for inherit_missing
                     if self.current_timestep_keyframe.has_control_weights():
@@ -312,8 +320,10 @@ class AdvancedControlBase:
                         break
                 # if eval_tk is outside of percent range, stop looking further
                 else:
+                    logger.info("eval_tk is outside of range, stopping looking further")
                     break
-        
+        logger.info(f"selected index: {self.current_timestep_index}")
+        logger.info(f"selected tk: {self.current_timestep_keyframe}")
         # if index changed, apply overrides
         if prev_index != self.current_timestep_index:
             if self.weights_override is not None:
@@ -355,6 +365,10 @@ class AdvancedControlBase:
     def get_control_inject(self, x_noisy, t, cond, batched_number):
         # prepare timestep and everything related
         self.prepare_current_timestep(t=t, batched_number=batched_number)
+        logger.info(f"After prepare_current_timestep, current_timestep_keyframe is: {self.current_timestep_keyframe}")
+        if self.current_timestep_keyframe is not None:
+            logger.info(f"tk: {self.current_timestep_keyframe.start_percent},{self.current_timestep_keyframe.start_t},str:{self.current_timestep_keyframe.strength}")
+        logger.info(f"Does cn strength exist? {hasattr(self, 'strength')}")
         # if should not perform any actions for the controlnet, exit without doing any work
         if self.strength == 0.0 or self.current_timestep_keyframe.strength == 0.0:
             control_prev = None

@@ -357,8 +357,14 @@ class AdvancedControlBase:
     
     def pre_run_advanced(self, model, percent_to_timestep_function):
         # for each timestep keyframe, calculate the start_t
+        logger.info(f"pre_run_advanced keyframes: {len(self.timestep_keyframes.keyframes)}")
         for tk in self.timestep_keyframes.keyframes:
+            logger.info(f"initial start_t: {tk.start_t}")
             tk.start_t = percent_to_timestep_function(tk.start_percent)
+            logger.info(f"converted start_t: {tk.start_t}")
+        test_percents = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        for percent in test_percents:
+            logger.info(f"Test conversion: {percent} -> {percent_to_timestep_function(percent)}")
         # clear variables
         self.cleanup_advanced()
 
@@ -369,6 +375,7 @@ class AdvancedControlBase:
         if self.current_timestep_keyframe is not None:
             logger.info(f"tk: {self.current_timestep_keyframe.start_percent},{self.current_timestep_keyframe.start_t},str:{self.current_timestep_keyframe.strength}")
         logger.info(f"Does cn strength exist? {hasattr(self, 'strength')}")
+        logger.info(f"cn timestep_percent range: {self.timestep_percent_range}, timestep_range: {self.timestep_range}")
         # if should not perform any actions for the controlnet, exit without doing any work
         if self.strength == 0.0 or self.current_timestep_keyframe.strength == 0.0:
             control_prev = None
